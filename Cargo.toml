@@ -17,8 +17,8 @@ name = "easybench_wasm"
 path = "lib.rs"
 
 [dependencies]
-web-sys = { version = "0.3", features = [ "Window", "Performance", "console" ] }
+web-sys = { version = "0.3", features = [ "Window", "Performance" ] }
 
 [dev-dependencies]
-# web-sys = { version = "0.3", features = [ "console" ] }
+web-sys = { version = "0.3", features = [ "console" ] }
 wasm-bindgen-test = "0.2.50"
