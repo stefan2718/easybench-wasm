@@ -1,6 +1,6 @@
 [package]
 name = "easybench-wasm"
-version = "0.1.4"
+version = "0.1.5"
 authors = [
   "Alex Sayers <alex.sayers@gmail.com>",
   "Stefan Battiston <stefan.battiston@gmail.com>"

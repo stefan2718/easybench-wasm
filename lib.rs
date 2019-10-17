@@ -203,7 +203,7 @@ impl Display for Stats {
 /// use it. Make sure to return enough information to prevent the optimiser from eliminating code
 /// from your benchmark! (See the module docs for more.)
 pub fn bench<F, O>(f: F) -> Stats where F: Fn() -> O {
-    bench_env((), |_| f() )
+    bench_env_limit(BENCH_TIME_LIMIT_SECS, (), |_| f() )
 }
 
 /// Run a benchmark with an environment.
@@ -226,18 +226,58 @@ pub fn bench<F, O>(f: F) -> Stats where F: Fn() -> O {
 /// nanoseconds. This is a worst-case scenario however, and I haven't actually been able to trigger
 /// it in practice... but it's good to be aware of the possibility.
 pub fn bench_env<F, I, O>(env: I, f: F) -> Stats where F: Fn(&mut I) -> O, I: Clone {
+    bench_env_limit_ref(BENCH_TIME_LIMIT_SECS, env, f )
+}
+
+/// Run a benchmark, specifying the run time limit.
+///
+/// See [bench](#method::bench)
+pub fn bench_limit<F, O>(time_limit_secs: f64, f: F) -> Stats where F: Fn() -> O {
+    bench_env_limit(time_limit_secs, (), |_| f() )
+}
+
+/// Run a benchmark with an environment, specifying the run time limit.
+///
+/// See [bench_env](#method::bench_env)
+pub fn bench_env_limit<F, I, O>(time_limit_secs: f64, env: I, f: F) -> Stats where F: Fn(I) -> O, I: Clone {
+    run_bench(time_limit_secs, env,
+        |xs| {
+            for i in xs.into_iter() {
+                pretend_to_use(f(i));             // Run the code and pretend to use the output
+            }
+        }
+    )
+}
+
+/// Run a benchmark with an environment, specifying the run time limit. The function to bench takes a mutable reference
+/// to the `env` parameter instead of a struct.
+///
+/// See [bench_env](#method::bench_env)
+pub fn bench_env_limit_ref<F, I, O>(time_limit_secs: f64, env: I, f: F) -> Stats where F: Fn(&mut I) -> O, I: Clone {
+    run_bench(time_limit_secs, env,
+        |mut xs| {
+            for i in xs.iter_mut() {
+                pretend_to_use(f(i));             // Run the code and pretend to use the output
+            }
+        }
+    )
+}
+
+fn run_bench<F, I>(time_limit_secs: f64, env: I, f: F) -> Stats where F: Fn(Vec<I>), I: Clone {
     let mut data = Vec::new();
-    let performance = web_sys::window().unwrap().performance().unwrap();
+    let performance = web_sys::window()
+        .expect("'Window' not available. This package should only be used in wasm32 inside a browser or headless browser")
+        .performance()
+        .expect("'Performance' not available. This package should only be used in wasm32 inside a browser or headless browser");
+
     let bench_start = performance.now(); // The time we started the benchmark (not used in results)
 
     // Collect data until BENCH_TIME_LIMIT_SECS is reached.
-    while (performance.now() - bench_start) < (BENCH_TIME_LIMIT_SECS * 1000_f64) {
+    while (performance.now() - bench_start) < (time_limit_secs * 1000_f64) {
         let iters = ITER_SCALE_FACTOR.powi(data.len() as i32).round() as usize;
-        let mut xs = vec![env.clone();iters]; // Prepare the environments - one per iteration
+        let xs = vec![env.clone();iters]; // Prepare the environments - one per iteration
         let iter_start = performance.now();      // Start the clock
-        for i in xs.iter_mut() {
-            pretend_to_use(f(i));             // Run the code and pretend to use the output
-        }
+        f(xs);
         let time = performance.now() - iter_start;
         data.push((iters, time));
     }
