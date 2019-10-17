@@ -1,17 +1,24 @@
 [package]
-name = "easybench"
+name = "easybench-wasm"
 version = "0.1.4"
-authors = ["Alex Sayers <alex.sayers@gmail.com>"]
+authors = [
+  "Alex Sayers <alex.sayers@gmail.com>",
+  "Stefan Battiston <stefan.battiston@gmail.com>"
+]
 description = "A lightweight benchmarking library"
-documentation = "https://docs.rs/easybench/"
-repository = "https://github.com/asayers/easybench-rs"
+# documentation = "https://docs.rs/easybench/"
+repository = "https://github.com/stefan2718/easybench-wasm"
 readme = "README.md"
 keywords = ["benchmark"]
 license = "MIT OR Apache-2.0"
 
 [lib]
-name = "easybench"
+name = "easybench_wasm"
 path = "lib.rs"
 
 [dependencies]
-humantime = "1.1.1"
+web-sys = { version = "0.3", features = [ "Window", "Performance", "console" ] }
+
+[dev-dependencies]
+# web-sys = { version = "0.3", features = [ "console" ] }
+wasm-bindgen-test = "0.2.50"

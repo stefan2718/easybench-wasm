@@ -151,18 +151,17 @@ which [states]:
 > having code optimized out. It is good enough that it is used by default.
 */
 
-extern crate humantime;
+extern crate web_sys;
 
 use std::f64;
 use std::fmt::{self,Display,Formatter};
-use std::time::*;
 
 // Each time we take a sample we increase the number of iterations:
 //      iters = ITER_SCALE_FACTOR ^ sample_no
 const ITER_SCALE_FACTOR: f64 = 1.1;
 
 // We try to spend this many seconds (roughly) in total on each benchmark.
-const BENCH_TIME_LIMIT_SECS: u64 = 1;
+const BENCH_TIME_LIMIT_SECS: f64 = 1.0;
 
 /// Statistics for a benchmark run.
 #[derive(Debug, PartialEq, Clone)]
@@ -188,10 +187,8 @@ impl Display for Stats {
             write!(f, "Only generated {} sample(s) - we can't fit a regression line to that! \
             Try making your benchmark faster.", self.samples)
         } else {
-            let per_iter: humantime::Duration = Duration::from_nanos(self.ns_per_iter as u64).into();
-            let per_iter = format!("{}", per_iter);
-            write!(f, "{:>11} (R²={:.3}, {} iterations in {} samples)",
-                per_iter, self.goodness_of_fit, self.iterations, self.samples)
+            write!(f, "{:>11.3} ns (R²={:.3}, {} iterations in {} samples)",
+                self.ns_per_iter, self.goodness_of_fit, self.iterations, self.samples)
         }
     }
 }
@@ -226,18 +223,18 @@ pub fn bench<F, O>(f: F) -> Stats where F: Fn() -> O {
 /// it in practice... but it's good to be aware of the possibility.
 pub fn bench_env<F, I, O>(env: I, f: F) -> Stats where F: Fn(&mut I) -> O, I: Clone {
     let mut data = Vec::new();
-    let bench_start = Instant::now(); // The time we started the benchmark (not used in results)
+    let performance = web_sys::window().unwrap().performance().unwrap();
+    let bench_start = performance.now(); // The time we started the benchmark (not used in results)
 
     // Collect data until BENCH_TIME_LIMIT_SECS is reached.
-    while bench_start.elapsed() < Duration::from_secs(BENCH_TIME_LIMIT_SECS) {
+    while (performance.now() - bench_start) < (BENCH_TIME_LIMIT_SECS * 1000_f64) {
         let iters = ITER_SCALE_FACTOR.powi(data.len() as i32).round() as usize;
         let mut xs = vec![env.clone();iters]; // Prepare the environments - one per iteration
-        let iter_start = Instant::now();      // Start the clock
-        for i in 0..iters {
-            let ref mut x = xs[i];            // Lookup the env for this iteration
-            pretend_to_use(f(x));             // Run the code and pretend to use the output
+        let iter_start = performance.now();      // Start the clock
+        for i in xs.iter_mut() {
+            pretend_to_use(f(i));             // Run the code and pretend to use the output
         }
-        let time = iter_start.elapsed();
+        let time = performance.now() - iter_start;
         data.push((iters, time));
     }
 
@@ -262,10 +259,11 @@ pub fn bench_env<F, I, O>(env: I, f: F) -> Stats where F: Fn(&mut I) -> O, I: Cl
 // Overflows:
 //
 // * sum(x * x): num_samples <= 0.5 * log_k (1 + 2 ^ 64 (FACTOR - 1))
-fn regression(data: &[(usize, Duration)]) -> (f64, f64) {
+fn regression(data: &[(usize, f64)]) -> (f64, f64) {
     if data.len() < 2 {
         return (f64::NAN, f64::NAN);
     }
+
     let data: Vec<(u64, u64)> = data.iter().map(|&(x,y)| (x as u64, as_nanos(y))).collect();
     let n = data.len() as f64;
     let nxbar  = data.iter().map(|&(x,_)| x  ).sum::<u64>(); // iter_time > 5e-11 ns
@@ -282,9 +280,8 @@ fn regression(data: &[(usize, Duration)]) -> (f64, f64) {
 }
 
 // Panics if x is longer than 584 years (1.8e10 seconds)
-fn as_nanos(x: Duration) -> u64 {
-    x.as_secs().checked_mul(1_000_000_000).expect("overflow: Duration was longer than 584 years")
-        .checked_add(x.subsec_nanos() as u64).unwrap()
+fn as_nanos(x: f64) -> u64 {
+    (x * 1000_f64).round() as u64
 }
 
 // Stolen from `bencher`, where it's known as `black_box`.
@@ -302,84 +299,5 @@ fn pretend_to_use<T>(dummy: T) -> T {
         let ret = ::std::ptr::read_volatile(&dummy);
         ::std::mem::forget(dummy);
         ret
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::thread;
-    use std::time::Duration;
-
-    fn fib(n: usize) -> usize {
-        let mut i = 0; let mut sum = 0; let mut last = 0; let mut curr = 1usize;
-        while i < n - 1 {
-            sum = curr.wrapping_add(last);
-            last = curr;
-            curr = sum;
-            i += 1;
-        }
-        sum
-    }
-
-    // This is only here because doctests don't work with `--nocapture`.
-    #[test] #[ignore]
-    fn doctests_again() {
-        println!();
-        println!("fib 200: {}", bench(|| fib(200) ));
-        println!("fib 500: {}", bench(|| fib(500) ));
-        println!("reverse: {}", bench_env(vec![0;100], |xs| xs.reverse()));
-        println!("sort:    {}", bench_env(vec![0;100], |xs| xs.sort()));
-
-        // This is fine:
-        println!("fib 1:   {}", bench(|| fib(500) ));
-        // This is NOT fine:
-        println!("fib 2:   {}", bench(|| { fib(500); } ));
-        // This is also fine, but a bit weird:
-        println!("fib 3:   {}", bench_env(0, |x| { *x = fib(500); } ));
-    }
-
-    #[test]
-    fn very_quick() {
-        println!();
-        println!("very quick: {}", bench(|| {}));
-    }
-
-    #[test]
-    fn very_slow() {
-        println!();
-        println!("very slow: {}", bench(|| thread::sleep(Duration::from_millis(400))));
-    }
-
-    #[test]
-    fn test_sleep() {
-        println!();
-        println!("sleep 1 ms: {}", bench(|| thread::sleep(Duration::from_millis(1))));
-    }
-
-    #[test]
-    fn noop() {
-        println!();
-        println!("noop base: {}", bench(                    | | {}));
-        println!("noop 0:    {}", bench_env(vec![0u64;0],   |_| {}));
-        println!("noop 16:   {}", bench_env(vec![0u64;16],  |_| {}));
-        println!("noop 64:   {}", bench_env(vec![0u64;64],  |_| {}));
-        println!("noop 256:  {}", bench_env(vec![0u64;256], |_| {}));
-        println!("noop 512:  {}", bench_env(vec![0u64;512], |_| {}));
-    }
-
-    #[test]
-    fn ret_value() {
-        println!();
-        println!("no ret 32:    {}", bench_env(vec![0u64;32],   |x| { x.clone() }));
-        println!("return 32:    {}", bench_env(vec![0u64;32],   |x| x.clone()));
-        println!("no ret 256:   {}", bench_env(vec![0u64;256],  |x| { x.clone() }));
-        println!("return 256:   {}", bench_env(vec![0u64;256],  |x| x.clone()));
-        println!("no ret 1024:  {}", bench_env(vec![0u64;1024], |x| { x.clone() }));
-        println!("return 1024:  {}", bench_env(vec![0u64;1024], |x| x.clone()));
-        println!("no ret 4096:  {}", bench_env(vec![0u64;4096], |x| { x.clone() }));
-        println!("return 4096:  {}", bench_env(vec![0u64;4096], |x| x.clone()));
-        println!("no ret 50000: {}", bench_env(vec![0u64;50000], |x| { x.clone() }));
-        println!("return 50000: {}", bench_env(vec![0u64;50000], |x| x.clone()));
     }
 }

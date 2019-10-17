@@ -1,2 +1,2 @@
 test:
-	cargo test --release -- --nocapture --test-threads=1
+	wasm-pack test --headless --chrome
