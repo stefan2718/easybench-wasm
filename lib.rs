@@ -152,9 +152,11 @@ which [states]:
 */
 
 extern crate web_sys;
+extern crate humantime;
 
 use std::f64;
 use std::fmt::{self,Display,Formatter};
+use std::time::Duration;
 
 // Each time we take a sample we increase the number of iterations:
 //      iters = ITER_SCALE_FACTOR ^ sample_no
@@ -187,8 +189,10 @@ impl Display for Stats {
             write!(f, "Only generated {} sample(s) - we can't fit a regression line to that! \
             Try making your benchmark faster.", self.samples)
         } else {
-            write!(f, "{:>11.3} ns (R²={:.3}, {} iterations in {} samples)",
-                self.ns_per_iter, self.goodness_of_fit, self.iterations, self.samples)
+            let per_iter: humantime::Duration = Duration::from_nanos(self.ns_per_iter as u64).into();
+            let per_iter = format!("{}", per_iter);
+            write!(f, "{:>11} (R²={:.3}, {} iterations in {} samples)",
+                per_iter, self.goodness_of_fit, self.iterations, self.samples)
         }
     }
 }
