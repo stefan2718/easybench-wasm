@@ -20,7 +20,6 @@ fn fib(n: usize) -> usize {
   sum
 }
 
-// This is only here because doctests don't work with `--nocapture`.
 #[wasm_bindgen_test]
 fn doctests_again() {
   println!();

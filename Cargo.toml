@@ -1,15 +1,15 @@
 [package]
 name = "easybench-wasm"
-version = "0.1.5"
+version = "0.2.0"
 authors = [
   "Alex Sayers <alex.sayers@gmail.com>",
   "Stefan Battiston <stefan.battiston@gmail.com>"
 ]
-description = "A lightweight benchmarking library"
-# documentation = "https://docs.rs/easybench/"
+description = "A lightweight benchmarking library for Wasm target"
 repository = "https://github.com/stefan2718/easybench-wasm"
 readme = "README.md"
-keywords = ["benchmark"]
+keywords = [ "benchmark", "profiling", "wasm", "wasm32" ]
+categories = [ "development-tools::profiling", "wasm" ]
 license = "MIT OR Apache-2.0"
 
 [lib]

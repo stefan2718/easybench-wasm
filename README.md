@@ -1,3 +1,5 @@
+This is a wasm32 browser friendly version of [easybench](https://docs.rs/easybench)
+
 A lightweight benchmarking library which:
 
 * uses linear regression to screen off sources of constant error;
@@ -5,7 +7,7 @@ A lightweight benchmarking library which:
 * has a very simple API!
 
 ```rust
-use easybench::{bench,bench_env};
+use easybench_wasm::{bench,bench_env};
 
 // Simple benchmarks are performed with `bench`.
 println!("fib 200: {}", bench(|| fib(200) ));

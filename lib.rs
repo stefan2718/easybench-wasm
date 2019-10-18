@@ -1,28 +1,32 @@
 /*!
+This is a wasm32 browser friendly fork of [easybench]
+
 A lightweight micro-benchmarking library which:
 
 * uses linear regression to screen off constant error;
 * handles benchmarks which mutate state;
 * is very easy to use!
 
-Easybench is designed for benchmarks with a running time in the range `1 ns < x < 1 ms` - results
+Easybench-wasm is designed for benchmarks with a running time in the range `1 ns < x < 1 ms` - results
 may be unreliable if benchmarks are very quick or very slow. It's inspired by [criterion], but
 doesn't do as much sophisticated analysis (no outlier detection, no HTML output).
 
+[easybench]: https://docs.rs/easybench
 [criterion]: https://hackage.haskell.org/package/criterion
 
-```
-use easybench::{bench,bench_env};
+```none
+use easybench_wasm::{bench,bench_env};
+use web_sys::console;
 
 # fn fib(_: usize) -> usize { 0 }
 #
 // Simple benchmarks are performed with `bench`.
-println!("fib 200: {}", bench(|| fib(200) ));
-println!("fib 500: {}", bench(|| fib(500) ));
+console::log_1(&format!("fib 200: {}", bench(|| fib(200) )).into());
+console::log_1(&format!("fib 500: {}", bench(|| fib(500) )).into());
 
 // If a function needs to mutate some state, use `bench_env`.
-println!("reverse: {}", bench_env(vec![0;100], |xs| xs.reverse() ));
-println!("sort:    {}", bench_env(vec![0;100], |xs| xs.sort()    ));
+console::log_1(&format!("reverse: {}", bench_env(vec![0;100], |xs| xs.reverse() )).into());
+console::log_1(&format!("sort:    {}", bench_env(vec![0;100], |xs| xs.sort()    )).into());
 ```
 
 Running the above yields the following results:
@@ -61,7 +65,7 @@ there is in the data.
 **TL;DR: Compile with `--release`; the overhead is likely to be within the noise of your
 benchmark.**
 
-Any work which easybench does once-per-sample is ignored (this is the purpose of the linear
+Any work which easybench-wasm does once-per-sample is ignored (this is the purpose of the linear
 regression technique described above). However, work which is done once-per-iteration *will* be
 counted in the final times.
 
@@ -83,7 +87,7 @@ If you have concerns about the results you're seeing, please take a look at [the
 `bench_env`][source]. The whole library `cloc`s in at under 100 lines of code, so it's pretty easy
 to read.
 
-[source]: ../src/easybench/lib.rs.html#229-237
+[source]: ../src/easybench-wasm/lib.rs.html#280-285
 
 ## Caveat 2: Sufficient data
 
@@ -107,8 +111,8 @@ benchmark.**
 Benchmarking pure functions involves a nasty gotcha which users should be aware of. Consider the
 following benchmarks:
 
-```
-# use easybench::{bench,bench_env};
+```none
+# use easybench_wasm::{bench,bench_env};
 #
 # fn fib(_: usize) -> usize { 0 }
 #
@@ -130,7 +134,7 @@ Oh, `fib_2`, why do you lie? The answer is: `fib(500)` is pure, and its return v
 thrown away, so the optimiser replaces the call with a no-op (which clocks in at 0 ns).
 
 What about the other two? `fib_1` looks very similar, with one exception: the closure which we're
-benchmarking returns the result of the `fib(500)` call. When it runs your code, easybench takes the
+benchmarking returns the result of the `fib(500)` call. When it runs your code, easybench-wasm takes the
 return value and tricks the optimiser into thinking it's going to use it for something, before
 throwing it away. This is why `fib_1` is safe from having code accidentally eliminated.
 
@@ -140,7 +144,7 @@ bit weird.
 
 ## Bonus caveat: Black box
 
-The function which easybench uses to trick the optimiser (`black_box`) is stolen from [bencher],
+The function which easybench-wasm uses to trick the optimiser (`black_box`) is stolen from [bencher],
 which [states]:
 
 [bencher]: https://docs.rs/bencher/
@@ -215,7 +219,7 @@ pub fn bench<F, O>(f: F) -> Stats where F: Fn() -> O {
 /// Nb: it's very possible that we will end up allocating many (>10,000) copies of `env` at the
 /// same time. Probably best to keep it small.
 ///
-/// See `bench` and the module docs for more.
+/// See [bench](fn.bench.html) and the module docs for more.
 ///
 /// ## Overhead
 ///
@@ -231,14 +235,14 @@ pub fn bench_env<F, I, O>(env: I, f: F) -> Stats where F: Fn(&mut I) -> O, I: Cl
 
 /// Run a benchmark, specifying the run time limit.
 ///
-/// See [bench](#method::bench)
+/// See [bench](fn.bench.html)
 pub fn bench_limit<F, O>(time_limit_secs: f64, f: F) -> Stats where F: Fn() -> O {
     bench_env_limit(time_limit_secs, (), |_| f() )
 }
 
 /// Run a benchmark with an environment, specifying the run time limit.
 ///
-/// See [bench_env](#method::bench_env)
+/// See [bench_env](fn.bench_env.html)
 pub fn bench_env_limit<F, I, O>(time_limit_secs: f64, env: I, f: F) -> Stats where F: Fn(I) -> O, I: Clone {
     run_bench(time_limit_secs, env,
         |xs| {
@@ -252,7 +256,7 @@ pub fn bench_env_limit<F, I, O>(time_limit_secs: f64, env: I, f: F) -> Stats whe
 /// Run a benchmark with an environment, specifying the run time limit. The function to bench takes a mutable reference
 /// to the `env` parameter instead of a struct.
 ///
-/// See [bench_env](#method::bench_env)
+/// See [bench_env](fn.bench_env.html)
 pub fn bench_env_limit_ref<F, I, O>(time_limit_secs: f64, env: I, f: F) -> Stats where F: Fn(&mut I) -> O, I: Clone {
     run_bench(time_limit_secs, env,
         |mut xs| {
@@ -323,7 +327,6 @@ fn regression(data: &[(usize, f64)]) -> (f64, f64) {
     (gradient, r2)
 }
 
-// Panics if x is longer than 584 years (1.8e10 seconds)
 fn as_nanos(x: f64) -> u64 {
     (x * 1000_f64).round() as u64
 }
