@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/stefan2718/easybench-wasm.svg?branch=master)](https://travis-ci.org/stefan2718/easybench-wasm)
+
 This is a wasm32 browser friendly version of [easybench](https://docs.rs/easybench)
 
 A lightweight benchmarking library which:
