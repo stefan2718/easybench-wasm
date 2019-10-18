@@ -7,15 +7,16 @@ A lightweight benchmarking library which:
 * has a very simple API!
 
 ```rust
+use web_sys::console;
 use easybench_wasm::{bench,bench_env};
 
 // Simple benchmarks are performed with `bench`.
-println!("fib 200: {}", bench(|| fib(200) ));
-println!("fib 500: {}", bench(|| fib(500) ));
+console::log_1(&format!("fib 200: {}", bench(|| fib(200) )).into());
+console::log_1(&format!("fib 500: {}", bench(|| fib(500) )).into());
 
 // If a function needs to mutate some state, use `bench_env`.
-println!("reverse: {}", bench_env(vec![1,2,3], |xs| xs.reverse()));
-println!("sort:    {}", bench_env(vec![1,2,3], |xs| xs.sort()));
+console::log_1(&format!("reverse: {}", bench_env(vec![1,2,3], |xs| xs.reverse())).into());
+console::log_1(&format!("sort:    {}", bench_env(vec![1,2,3], |xs| xs.sort())).into());
 ```
 
 Running the above yields the following:

@@ -14,7 +14,8 @@ doesn't do as much sophisticated analysis (no outlier detection, no HTML output)
 [easybench]: https://docs.rs/easybench
 [criterion]: https://hackage.haskell.org/package/criterion
 
-```none
+``` ignore
+// example marked as "not tested" because doc tests don't run in wasm32
 use easybench_wasm::{bench,bench_env};
 use web_sys::console;
 
@@ -111,7 +112,8 @@ benchmark.**
 Benchmarking pure functions involves a nasty gotcha which users should be aware of. Consider the
 following benchmarks:
 
-```none
+``` ignore
+// example marked as "not tested" because doc tests don't run in wasm32
 # use easybench_wasm::{bench,bench_env};
 #
 # fn fib(_: usize) -> usize { 0 }
