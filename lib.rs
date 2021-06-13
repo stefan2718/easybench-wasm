@@ -157,12 +157,15 @@ which [states]:
 > having code optimized out. It is good enough that it is used by default.
 */
 
+extern crate js_sys;
+extern crate wasm_bindgen;
 extern crate web_sys;
 extern crate humantime;
 
 use std::f64;
 use std::fmt::{self,Display,Formatter};
 use std::time::Duration;
+use wasm_bindgen::JsCast;
 
 // Each time we take a sample we increase the number of iterations:
 //      iters = ITER_SCALE_FACTOR ^ sample_no
@@ -271,8 +274,8 @@ pub fn bench_env_limit_ref<F, I, O>(time_limit_secs: f64, env: I, f: F) -> Stats
 
 fn run_bench<F, I>(time_limit_secs: f64, env: I, f: F) -> Stats where F: Fn(Vec<I>), I: Clone {
     let mut data = Vec::new();
-    let performance = web_sys::window()
-        .expect("'Window' not available. This package should only be used in wasm32 inside a browser or headless browser")
+    let performance = js_sys::global()
+        .unchecked_into::<web_sys::Window>()
         .performance()
         .expect("'Performance' not available. This package should only be used in wasm32 inside a browser or headless browser");
 
